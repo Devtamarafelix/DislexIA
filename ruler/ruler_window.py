@@ -3,7 +3,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QGuiApplication, QPainter, QPen, QBrush
 from PySide6.QtWidgets import QWidget
 
-from ruler.gear_button import GearButton
+from ruler.ruler_buttons import RulerButton
 
 
 class RulerWindow(QWidget):
@@ -25,8 +25,12 @@ class RulerWindow(QWidget):
         self._restore_x = int(x)          # x normal, usado ao sair da largura total
         self.close_allowed = False        # a janela principal liga isto ao encerrar
 
-        # Engrenagem: janela própria, sempre opaca e sempre clicável.
-        self.gear = GearButton()
+        # Botões (da esquerda para a direita): play, repetir, engrenagem.
+        # Cada um é uma janela própria, sempre opaca e sempre clicável.
+        self.play_button = RulerButton("play", "Ler em voz alta o texto sob a régua")
+        self.repeat_button = RulerButton("repeat", "Repetir a última leitura")
+        self.gear = RulerButton("gear", "Abrir configurações")
+        self.buttons = [self.play_button, self.repeat_button, self.gear]
 
         self.setWindowTitle("Régua de leitura")
         self.setWindowFlags(
@@ -39,7 +43,7 @@ class RulerWindow(QWidget):
         self.move(int(x), int(y))
         self.set_click_through(click_through)
         self.set_full_width(full_width)
-        self._sync_gear()
+        self._sync_buttons()
 
     # ------------------------------------------------------------------ cor / opacidade
     def set_color(self, color):
@@ -57,7 +61,7 @@ class RulerWindow(QWidget):
         w = self.width() if self._full_width else self._normal_width
         h = height if height is not None else self.height()
         self.resize(w, h)
-        self._sync_gear()
+        self._sync_buttons()
 
     def is_full_width(self):
         return self._full_width
@@ -82,7 +86,7 @@ class RulerWindow(QWidget):
                 x = geo.x() + max(0, (geo.width() - self._normal_width) // 2)
             self.setGeometry(x, self.y(), self._normal_width, self.height())
         self.update()
-        self._sync_gear()
+        self._sync_buttons()
         self.position_committed.emit()
 
     def move_ruler(self, x, y, screen=None):
@@ -101,28 +105,53 @@ class RulerWindow(QWidget):
         geo = screen.geometry()
         self.setGeometry(geo.x(), y, geo.width(), self.height())
 
-    # ------------------------------------------------------------------ engrenagem
-    def _sync_gear(self):
+    # ------------------------------------------------------------------ botões
+    def _sync_buttons(self):
         geo = self.geometry()
         side = max(18, min(36, geo.height() - 10))
         margin = max(4, (geo.height() - side) // 2)
-        self.gear.setFixedSize(side, side)
-        self.gear.move(geo.x() + geo.width() - side - margin,
-                       geo.y() + (geo.height() - side) // 2)
+        gap = 6
+        y = geo.y() + (geo.height() - side) // 2
+        x = geo.x() + geo.width() - margin
+        for button in reversed(self.buttons):
+            x -= side
+            button.setFixedSize(side, side)
+            button.move(x, y)
+            x -= gap
+
+    def show_buttons(self):
+        """Mostra os botões (mesmo com a régua desativada) e os põe na frente."""
+        self._sync_buttons()
+        for button in self.buttons:
+            button.show()
+        for button in self.buttons:
+            button.raise_()
+
+    def begin_capture(self):
+        """Esconde régua e botões para fotografar a tela sob a régua."""
+        self._capture_was_visible = self.isVisible()
+        if self._capture_was_visible:
+            self.hide()
+        for button in self.buttons:
+            button.hide()
+
+    def end_capture(self):
+        if getattr(self, "_capture_was_visible", False):
+            self.show()          # o showEvent traz os botões de volta
+        else:
+            self.show_buttons()
 
     def moveEvent(self, event):
         super().moveEvent(event)
-        self._sync_gear()
+        self._sync_buttons()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._sync_gear()
+        self._sync_buttons()
 
     def showEvent(self, event):
         super().showEvent(event)
-        self._sync_gear()
-        self.gear.show()
-        self.gear.raise_()
+        self.show_buttons()
 
     # ------------------------------------------------------------------ clique-transparente
     def set_click_through(self, enabled):
@@ -161,7 +190,8 @@ class RulerWindow(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton and not self._click_through:
             self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-            self.gear.raise_()
+            for button in self.buttons:
+                button.raise_()
             event.accept()
         else:
             event.ignore()
@@ -184,7 +214,8 @@ class RulerWindow(QWidget):
 
     def closeEvent(self, event):
         if self.close_allowed or QGuiApplication.isSavingSession():
-            self.gear.close()
+            for button in self.buttons:
+                button.close()
             event.accept()
             return
         # A régua é controlada pela janela principal; fechar aqui só a oculta.

@@ -9,11 +9,12 @@ import time
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QColorDialog,
-    QFrame, QApplication, QSystemTrayIcon, QMenu
+    QFrame, QApplication, QSystemTrayIcon, QMenu, QComboBox
 )
 from PySide6.QtCore import Qt
 
 from app.controls_panel import RulerControls
+from app.reader import ReadingController
 from app.settings import read_setting, settings_store
 from app.settings_popup import SettingsPopup
 from app.theme import build_stylesheet, font_found, make_app_icon
@@ -43,6 +44,8 @@ class MainWindow(QWidget):
             full_width=self.state["full_width"],
         )
         self.popup = SettingsPopup()
+        self.reader = ReadingController(
+            self.ruler, lambda: read_setting("reader/language"), self)
         self._quitting = False
 
         self.setWindowTitle("Leitura Acessível")
@@ -58,10 +61,10 @@ class MainWindow(QWidget):
 
         # A engrenagem fica sempre visível (mesmo com a régua desativada)
         # para dar acesso às configurações sem abrir esta janela.
-        self.ruler.gear.show()
+        self.ruler.show_buttons()
         if read_setting("ruler/enabled"):
             self.ruler.show()
-        self.ruler.gear.raise_()
+        self.ruler.show_buttons()
         self._refresh_state()
 
     # ------------------------------------------------------------------ interface
@@ -81,8 +84,8 @@ class MainWindow(QWidget):
         layout.addWidget(self.status)
 
         if not font_found():
-            warn = QLabel("A fonte OpenDyslexic não foi encontrada. Copie os arquivos .otf para a "
-                          "pasta fonts/ (veja fonts/LEIAME.txt) e reabra o programa.")
+            warn = QLabel("A fonte OpenDyslexic não foi encontrada. Rode preparar_offline.py ou copie os "
+                          ".otf para a pasta fonts/ (veja fonts/LEIAME.txt) e reabra o programa.")
             warn.setWordWrap(True)
             warn.setStyleSheet("color:#9A5B00;font-size:8.5pt;")
             layout.addWidget(warn)
@@ -115,12 +118,39 @@ class MainWindow(QWidget):
         panel_layout.addWidget(hint)
         layout.addWidget(panel)
 
+        ai_panel = QFrame()
+        ai_panel.setObjectName("panel")
+        ai_layout = QVBoxLayout(ai_panel)
+        ai_layout.setContentsMargins(17, 17, 17, 17)
+        ai_layout.setSpacing(10)
+        ai_heading = QLabel("Leitura em voz alta (100% local)")
+        ai_heading.setObjectName("heading")
+        ai_layout.addWidget(ai_heading)
+        lang_row = QHBoxLayout()
+        lang_row.addWidget(QLabel("Idioma do texto"))
+        lang_row.addStretch()
+        self.language_combo = QComboBox()
+        for label, code in (("Português (Brasil)", "pt-BR"), ("English (US)", "en-US"),
+                            ("Español", "es-ES")):
+            self.language_combo.addItem(label, code)
+        index = self.language_combo.findData(read_setting("reader/language"))
+        self.language_combo.setCurrentIndex(max(0, index))
+        lang_row.addWidget(self.language_combo)
+        ai_layout.addLayout(lang_row)
+        ai_hint = QLabel("O botão ▶ da régua fotografa só a área sob a régua, o OCR do computador "
+                         "(Tesseract) lê o texto e a voz do Windows fala. Tudo roda neste "
+                         "computador, sem internet e sem enviar nada para fora.")
+        ai_hint.setWordWrap(True)
+        ai_hint.setStyleSheet("color:#65718A;font-size:8.5pt;")
+        ai_layout.addWidget(ai_hint)
+        layout.addWidget(ai_panel)
+
         self.quit_button = QPushButton("Encerrar programa")
         self.quit_button.setObjectName("secondary")
         self.quit_button.setToolTip("Fechar esta janela só a esconde; o programa continua em segundo plano. Use este botão para sair de vez.")
         layout.addWidget(self.quit_button)
 
-        footer = QLabel("Protótipo 0.3 • Preferências salvas automaticamente")
+        footer = QLabel("Protótipo 0.5 • Preferências salvas automaticamente")
         footer.setStyleSheet("color:#7A8499;font-size:8pt;")
         layout.addWidget(footer)
 
@@ -141,6 +171,11 @@ class MainWindow(QWidget):
         self.toggle_button.clicked.connect(self._toggle_ruler)
         self.center_button.clicked.connect(self._center_ruler)
         self.quit_button.clicked.connect(self._quit_app)
+        self.language_combo.currentIndexChanged.connect(self._language_changed)
+        self.ruler.play_button.clicked.connect(self.reader.play)
+        self.ruler.repeat_button.clicked.connect(self.reader.repeat)
+        self.reader.state_changed.connect(self._reader_state_changed)
+        self.reader.message.connect(self._show_message)
         for panel in self.panels:
             panel.color_requested.connect(self._choose_color)
             panel.opacity_changed.connect(self._opacity_changed)
@@ -180,6 +215,19 @@ class MainWindow(QWidget):
             else "color:#7A8499;font-weight:650;padding:4px 0;"
         )
 
+    def _language_changed(self, _index):
+        self._save("reader/language", self.language_combo.currentData())
+
+    def _reader_state_changed(self, state):
+        if state == "idle":
+            self.ruler.play_button.set_kind("play", "Ler em voz alta o texto sob a régua")
+        else:
+            self.ruler.play_button.set_kind("stop", "Parar a leitura")
+
+    def _show_message(self, text):
+        self.tray.showMessage("Leitura Acessível", text,
+                              QSystemTrayIcon.MessageIcon.Warning, 6000)
+
     def _save_ruler_position(self):
         # Em largura total o x "real" é o da tela; guardamos o x normal para poder voltar.
         self._save("ruler/x", self.ruler.normal_x())
@@ -193,7 +241,7 @@ class MainWindow(QWidget):
         else:
             self.ruler.show()
             self.ruler.raise_()
-            self.ruler.gear.raise_()
+            self.ruler.show_buttons()
             self._save("ruler/enabled", True)
         self._refresh_state()
 
@@ -273,6 +321,7 @@ class MainWindow(QWidget):
         self._save("ruler/enabled", self.ruler.isVisible())
         self._save_ruler_position()
         self._quitting = True
+        self.reader.stop()
         self.ruler.close_allowed = True
         self.tray.hide()
         QApplication.quit()

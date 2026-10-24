@@ -11,6 +11,7 @@ DEFAULTS = {
     "ruler/enabled": True,
     "ruler/click_through": False,
     "ruler/full_width": False,
+    "reader/language": "pt-BR",
 }
 
 def settings_store():

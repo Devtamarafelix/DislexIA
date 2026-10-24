@@ -67,6 +67,10 @@ def build_stylesheet():
         QSlider::groove:horizontal:disabled {{ background: #ECEFF5; }}
         QSlider::handle:horizontal:disabled {{ background: #AEB8D0; }}
         QCheckBox {{ spacing: 8px; }}
+        QLineEdit {{ background: white; border: 1px solid #C9D1E3; border-radius: 9px; padding: 9px 10px; }}
+        QLineEdit:focus {{ border: 1px solid #334E8C; }}
+        QComboBox {{ background: white; border: 1px solid #C9D1E3; border-radius: 9px; padding: 8px 10px; }}
+        QComboBox QAbstractItemView {{ background: white; selection-background-color: #DDE5F4; selection-color: #20283A; }}
     """
 
 
