@@ -1,0 +1,14 @@
+Componentes de terceiros que o projeto pode incluir (após rodar preparar_offline.py)
+====================================================================================
+
+- Tesseract OCR (pasta tesseract/) ........ Apache License 2.0
+  https://github.com/tesseract-ocr/tesseract
+- Dados de idioma tessdata_fast (tessdata/) Apache License 2.0
+  https://github.com/tesseract-ocr/tessdata_fast
+- Fonte OpenDyslexic (fonts/) ............. SIL Open Font License 1.1
+  https://opendyslexic.org/
+- PySide6 / Qt ............................ LGPL v3 / GPL / comercial
+  https://doc.qt.io/qt-6/licensing.html
+
+Ao distribuir o projeto com essas pastas, mantenha este arquivo e os avisos de
+licença que acompanham cada componente.

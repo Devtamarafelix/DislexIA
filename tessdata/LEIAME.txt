@@ -1,0 +1,10 @@
+Idiomas do OCR (opcional)
+=========================
+
+Se o Tesseract instalado não tiver o português, coloque aqui o arquivo
+por.traineddata (e, se quiser, eng.traineddata / spa.traineddata).
+
+Os arquivos estão em https://github.com/tesseract-ocr/tessdata_fast
+(baixe o .traineddata do idioma e copie para esta pasta).
+
+Enquanto houver arquivos .traineddata nesta pasta, o programa os usa.

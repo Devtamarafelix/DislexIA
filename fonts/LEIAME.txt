@@ -1,0 +1,17 @@
+Fonte OpenDyslexic
+==================
+
+O programa usa a fonte OpenDyslexic em toda a interface.
+
+Jeito fácil: na pasta do projeto, rode (com internet, uma vez)
+
+    python preparar_offline.py
+
+Ele baixa OpenDyslexic-Regular.otf e OpenDyslexic-Bold.otf para ESTA pasta.
+
+Jeito manual: baixe em https://opendyslexic.org/ (gratuita, licença SIL Open
+Font License), copie os arquivos .otf para esta pasta e reabra o programa.
+Instalar a fonte normalmente no Windows também funciona.
+
+Se a fonte não for encontrada, o programa usa a Segoe UI e mostra um aviso
+na janela do sistema.
