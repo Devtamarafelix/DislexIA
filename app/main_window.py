@@ -9,7 +9,7 @@ import time
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QColorDialog,
-    QFrame, QApplication, QSystemTrayIcon, QMenu, QComboBox
+    QFrame, QApplication, QSystemTrayIcon, QMenu, QComboBox, QScrollArea
 )
 from PySide6.QtCore import Qt
 
@@ -54,6 +54,13 @@ class MainWindow(QWidget):
         self.setStyleSheet(build_stylesheet())
         self._build_ui()
         self._build_tray()
+        
+        screen = QGuiApplication.primaryScreen()
+        
+        if screen:
+         available = screen.availableGeometry()
+         height = min(760, int(available.height() * 0.85))
+         self.resize(520, height)
 
         self.panels = [self.controls, self.popup.controls]
         self._connect_signals()
@@ -69,8 +76,16 @@ class MainWindow(QWidget):
 
     # ------------------------------------------------------------------ interface
     def _build_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(22, 22, 22, 22)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0,0,0,0)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        
+        content = QWidget()
+        layout =QVBoxLayout(content)
+        layout.setContentsMargins(22,22,22,22)
         layout.setSpacing(14)
 
         title = QLabel("Leitura Acessível")
@@ -153,6 +168,9 @@ class MainWindow(QWidget):
         footer = QLabel("Protótipo 0.5 • Preferências salvas automaticamente")
         footer.setStyleSheet("color:#7A8499;font-size:8pt;")
         layout.addWidget(footer)
+        
+        scroll.setWidget(content)
+        main_layout.addWidget(scroll)
 
     def _build_tray(self):
         self.tray = QSystemTrayIcon(make_app_icon(), self)
