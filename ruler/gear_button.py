@@ -7,7 +7,6 @@ from PySide6.QtCore import Qt, Signal, QPointF, QRectF
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
-
 class GearButton(QWidget):
     clicked = Signal()
 

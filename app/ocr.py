@@ -70,7 +70,7 @@ def check(lang_code):
 
 
 def recognize(png_bytes, lang_code):
-    """Reconhece o texto de uma imagem PNG. Retorna o texto (vazio se não achar nada)."""
+    """Reconhece o texto de uma imagem PNG. Retorna o texto (vazio se não achar nada), sem ação."""
     import pytesseract
     from PIL import Image, ImageOps, ImageStat
 

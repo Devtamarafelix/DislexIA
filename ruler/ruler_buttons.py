@@ -3,6 +3,7 @@
 Cada botão é uma janela própria, sempre opaca e sempre clicável, mesmo com a
 régua translúcida ou com "clique-transparente" ligado.
 """
+
 import math
 
 from PySide6.QtCore import Qt, Signal, QPointF, QRectF

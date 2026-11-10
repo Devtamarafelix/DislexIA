@@ -5,7 +5,6 @@ from PySide6.QtWidgets import QWidget
 
 from ruler.ruler_buttons import RulerButton
 
-
 class RulerWindow(QWidget):
     # Emitido quando a posição "definitiva" muda (soltar o mouse, largura total).
     position_committed = Signal()

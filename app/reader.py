@@ -3,6 +3,8 @@
 Fluxo: fotografa a região da tela sob a régua -> OCR local (Tesseract) lê o
 texto -> a voz do computador (QtTextToSpeech) fala. O botão de repetir fala de
 novo o último texto, sem refazer o OCR.
+
+Ponto de atenção: Não le frases que começam com *
 """
 from PySide6.QtCore import (
     QBuffer, QByteArray, QIODevice, QLocale, QObject, QRect, Qt, QThread, QTimer, Signal

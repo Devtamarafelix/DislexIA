@@ -140,6 +140,7 @@ dislexia_app_prototipo/
     └── ruler_window.py
 ```
 ## Utilizem::
+(caso esteja usando a versão do python 3.15, substitua o 3.14)
 py -3.14 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
