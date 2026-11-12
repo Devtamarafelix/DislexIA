@@ -13,6 +13,8 @@ from PySide6.QtWidgets import QWidget
 COLORS = {
     "gear": "#334E8C",
     "repeat": "#334E8C",
+    "power_on": "#334E8C",     # régua ativa (clicar desativa)
+    "power_off": "#7A8499",    # régua desativada (clicar ativa)
     "play": "#23835D",
     "stop": "#B3402F",
 }
@@ -90,6 +92,8 @@ class RulerButton(QWidget):
             painter.drawRoundedRect(QRectF(-side, -side, 2 * side, 2 * side), s * 0.05, s * 0.05)
         elif self._kind == "repeat":
             self._draw_repeat(painter, s, white)
+        elif self._kind in ("power_on", "power_off"):
+            self._draw_power(painter, s, white)
 
     @staticmethod
     def _draw_gear(painter, s, white, bg):
@@ -107,6 +111,17 @@ class RulerButton(QWidget):
             painter.restore()
         painter.setBrush(bg)
         painter.drawEllipse(QPointF(0, 0), s * 0.11, s * 0.11)
+
+    @staticmethod
+    def _draw_power(painter, s, white):
+        """Símbolo de liga/desliga: arco aberto no topo com uma barra vertical."""
+        r = s * 0.24
+        pen = QPen(white, s * 0.09)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawArc(QRectF(-r, -r, 2 * r, 2 * r), 130 * 16, 280 * 16)
+        painter.drawLine(QPointF(0, -r * 1.25), QPointF(0, -r * 0.1))
 
     @staticmethod
     def _draw_repeat(painter, s, white):

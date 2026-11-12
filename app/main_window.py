@@ -9,7 +9,7 @@ import time
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QColorDialog,
-    QFrame, QApplication, QSystemTrayIcon, QMenu, QComboBox
+    QFrame, QApplication, QSystemTrayIcon, QMenu, QComboBox, QScrollArea
 )
 from PySide6.QtCore import Qt
 
@@ -33,6 +33,8 @@ class MainWindow(QWidget):
             "full_width": read_setting("ruler/full_width"),
             "click_through": read_setting("ruler/click_through"),
             "auto_read": read_setting("reader/auto_read"),
+            "reverse": read_setting("ruler/reverse"),
+            "dim": read_setting("ruler/dim"),
         }
         self.ruler = RulerWindow(
             color=self.state["color"],
@@ -43,6 +45,8 @@ class MainWindow(QWidget):
             y=read_setting("ruler/y"),
             click_through=self.state["click_through"],
             full_width=self.state["full_width"],
+            reverse=self.state["reverse"],
+            dim=self.state["dim"],
         )
         self.popup = SettingsPopup()
         self.reader = ReadingController(
@@ -52,7 +56,13 @@ class MainWindow(QWidget):
 
         self.setWindowTitle("Leitura Acessível")
         self.setWindowIcon(make_app_icon())
-        self.setFixedWidth(520)
+        # Janela ajustável: o usuário pode aumentar e diminuir como quiser.
+        # O conteúdo fica numa área com rolagem para nada ficar cortado.
+        self.setMinimumSize(360, 300)
+        self.resize(520, 780)
+        saved_geometry = self.store.value("window/geometry")
+        if saved_geometry:
+            self.restoreGeometry(saved_geometry)
         self.setStyleSheet(build_stylesheet())
         self._build_ui()
         self._build_tray()
@@ -71,7 +81,17 @@ class MainWindow(QWidget):
 
     # ------------------------------------------------------------------ interface
     def _build_ui(self):
-        layout = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        content = QWidget()
+        scroll.setWidget(content)
+        outer.addWidget(scroll)
+
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(22, 22, 22, 22)
         layout.setSpacing(14)
 
@@ -112,9 +132,11 @@ class MainWindow(QWidget):
         panel_layout.addWidget(heading)
         self.controls = RulerControls()
         panel_layout.addWidget(self.controls)
-        hint = QLabel("Dica: arraste a régua com o botão esquerdo do mouse. Para movê-la, desative "
-                      "temporariamente a opção de cliques por baixo. A engrenagem na régua abre uma "
-                      "caixa com estas mesmas opções.")
+        hint = QLabel("Dica: arraste a régua com o botão esquerdo do mouse para movê-la e arraste as "
+                      "bordas ou os cantos dela para mudar a altura e a largura. Para isso, desative "
+                      "temporariamente a opção de cliques por baixo. Os botões ao lado da régua "
+                      "(▶, liga/desliga a régua e engrenagem) ficam fora da faixa de leitura; a engrenagem abre "
+                      "uma caixa com estas mesmas opções.")
         hint.setWordWrap(True)
         hint.setStyleSheet("color:#65718A;font-size:8.5pt;")
         panel_layout.addWidget(hint)
@@ -153,7 +175,7 @@ class MainWindow(QWidget):
         self.quit_button.setToolTip("Fechar esta janela só a esconde; o programa continua em segundo plano. Use este botão para sair de vez.")
         layout.addWidget(self.quit_button)
 
-        footer = QLabel("Protótipo 0.5 • Preferências salvas automaticamente")
+        footer = QLabel("Protótipo 0.6 • Preferências salvas automaticamente")
         footer.setStyleSheet("color:#7A8499;font-size:8pt;")
         layout.addWidget(footer)
 
@@ -163,6 +185,7 @@ class MainWindow(QWidget):
         self._tray_menu = QMenu()
         self.tray_toggle_action = self._tray_menu.addAction("Desativar régua")
         self.tray_toggle_action.triggered.connect(self._toggle_ruler)
+        self._tray_menu.addAction("Repetir última leitura").triggered.connect(self.reader.repeat)
         self._tray_menu.addAction("Abrir janela do sistema").triggered.connect(self.show_settings)
         self._tray_menu.addSeparator()
         self._tray_menu.addAction("Encerrar programa").triggered.connect(self._quit_app)
@@ -176,7 +199,7 @@ class MainWindow(QWidget):
         self.quit_button.clicked.connect(self._quit_app)
         self.language_combo.currentIndexChanged.connect(self._language_changed)
         self.ruler.play_button.clicked.connect(self.reader.play)
-        self.ruler.repeat_button.clicked.connect(self.reader.repeat)
+        self.ruler.power_button.clicked.connect(self._toggle_ruler)
         self.ruler.drag_started.connect(self.reader.ruler_drag_started)
         self.ruler.user_moved.connect(self.reader.ruler_moved)
         self.reader.state_changed.connect(self._reader_state_changed)
@@ -189,10 +212,13 @@ class MainWindow(QWidget):
             panel.full_width_toggled.connect(self._full_width_changed)
             panel.click_through_toggled.connect(self._click_through_changed)
             panel.auto_read_toggled.connect(self._auto_read_changed)
+            panel.reverse_toggled.connect(self._reverse_changed)
+            panel.dim_changed.connect(self._dim_changed)
         self.popup.toggle_requested.connect(self._toggle_ruler)
         self.popup.open_system_requested.connect(self.show_settings)
         self.ruler.gear.clicked.connect(self._gear_clicked)
         self.ruler.position_committed.connect(self._save_ruler_position)
+        self.ruler.size_committed.connect(self._ruler_resized)
 
     # ------------------------------------------------------------------ estado
     def _save(self, key, value):
@@ -208,13 +234,17 @@ class MainWindow(QWidget):
         s = self.state
         for panel in self.panels:
             panel.set_values(s["color"], s["opacity"], s["height"], s["width"],
-                             s["full_width"], s["click_through"], s["auto_read"])
+                             s["full_width"], s["click_through"], s["auto_read"],
+                             s["reverse"], s["dim"])
 
     def _refresh_state(self):
         active = self.ruler.isVisible()
         self.toggle_button.setText("Desativar régua" if active else "Ativar régua")
         self.tray_toggle_action.setText("Desativar régua" if active else "Ativar régua")
         self.popup.set_active(active)
+        self.ruler.power_button.set_kind(
+            "power_on" if active else "power_off",
+            "Desativar régua" if active else "Ativar régua")
         self.status.setText("● Régua ativa" if active else "○ Régua desativada")
         self.status.setStyleSheet(
             "color:#23835D;font-weight:650;padding:4px 0;" if active
@@ -310,6 +340,19 @@ class MainWindow(QWidget):
         self._update("full_width", checked)
         self._save_ruler_position()
 
+    def _ruler_resized(self, width, height):
+        """A régua foi redimensionada com o mouse (arrastando as bordas)."""
+        self._update("width", width)
+        self._update("height", height)
+
+    def _reverse_changed(self, checked):
+        self.ruler.set_reverse(checked)
+        self._update("reverse", checked)
+
+    def _dim_changed(self, value):
+        self.ruler.set_dim(value)
+        self._update("dim", value)
+
     def _click_through_changed(self, checked):
         self.ruler.set_click_through(checked)
         self._update("click_through", checked)
@@ -331,6 +374,7 @@ class MainWindow(QWidget):
         self.activateWindow()
 
     def _quit_app(self):
+        self._save("window/geometry", self.saveGeometry())
         self._save("ruler/enabled", self.ruler.isVisible())
         self._save_ruler_position()
         self._quitting = True
@@ -344,6 +388,7 @@ class MainWindow(QWidget):
         if self._quitting or QGuiApplication.isSavingSession():
             event.accept()
             return
+        self._save("window/geometry", self.saveGeometry())
         self._save("ruler/enabled", self.ruler.isVisible())
         self._save_ruler_position()
         event.ignore()

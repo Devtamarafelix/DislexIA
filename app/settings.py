@@ -11,9 +11,17 @@ DEFAULTS = {
     "ruler/enabled": True,
     "ruler/click_through": False,
     "ruler/full_width": False,
+    "ruler/reverse": False,
+    "ruler/dim": 70,
     "reader/language": "pt-BR",
     "reader/auto_read": True,
 }
+
+# Limites de tamanho da régua (valem para os controles deslizantes e para o arrasto das bordas).
+HEIGHT_RANGE = (24, 300)
+WIDTH_RANGE = (200, 2400)
+DIM_RANGE = (10, 95)
+
 
 def settings_store():
     return QSettings("ProjetoAcessibilidade", "LeituraAcessivel")

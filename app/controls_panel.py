@@ -3,6 +3,8 @@ e na janela do sistema. Só emitem sinais; quem aplica é a MainWindow."""
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QCheckBox
 
+from app.settings import DIM_RANGE, HEIGHT_RANGE, WIDTH_RANGE
+
 
 class RulerControls(QWidget):
     color_requested = Signal()
@@ -12,6 +14,8 @@ class RulerControls(QWidget):
     full_width_toggled = Signal(bool)
     click_through_toggled = Signal(bool)
     auto_read_toggled = Signal(bool)
+    reverse_toggled = Signal(bool)
+    dim_changed = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -29,9 +33,16 @@ class RulerControls(QWidget):
         color_row.addWidget(self.color_button)
         layout.addLayout(color_row)
 
+        self.reverse = QCheckBox("Régua reversa (escurece o resto da tela)")
+        self.reverse.setToolTip("Em vez de colorir a faixa, a régua fica transparente e o resto da tela "
+                                "escurece, para você focar só no trecho iluminado.")
+        layout.addWidget(self.reverse)
+
+        # A ordem dos controles deslizantes precisa bater com a de set_values().
         self.opacity_slider = self._add_slider(layout, "Transparência", 5, 100, "%")
-        self.height_slider = self._add_slider(layout, "Altura", 24, 180, " px")
-        self.width_slider = self._add_slider(layout, "Largura", 300, 1800, " px")
+        self.dim_slider = self._add_slider(layout, "Escurecimento do fundo", DIM_RANGE[0], DIM_RANGE[1], "%")
+        self.height_slider = self._add_slider(layout, "Altura", HEIGHT_RANGE[0], HEIGHT_RANGE[1], " px")
+        self.width_slider = self._add_slider(layout, "Largura", WIDTH_RANGE[0], WIDTH_RANGE[1], " px")
 
         self.full_width = QCheckBox("Régua em largura total da tela")
         self.full_width.setToolTip("A régua ocupa a tela inteira na horizontal; ao arrastar, ela só se move para cima e para baixo.")
@@ -53,6 +64,9 @@ class RulerControls(QWidget):
         self.full_width.toggled.connect(self.full_width_toggled)
         self.click_through.toggled.connect(self.click_through_toggled)
         self.auto_read.toggled.connect(self.auto_read_toggled)
+        self.reverse.toggled.connect(self.reverse_toggled)
+        self.dim_slider.valueChanged.connect(self.dim_changed)
+        self.reverse.toggled.connect(self._update_reverse_enabled)
         self.full_width.toggled.connect(lambda checked: self.width_slider.setEnabled(not checked))
 
     def _add_slider(self, parent, label_text, minimum, maximum, suffix):
@@ -77,18 +91,25 @@ class RulerControls(QWidget):
             "border-radius:9px;padding:10px 12px;font-weight:600;"
         )
 
-    def set_values(self, color, opacity, height, width, full_width, click_through, auto_read=True):
+    def _update_reverse_enabled(self, reverse):
+        """Na régua reversa a faixa é transparente (só o escurecimento vale)."""
+        self.opacity_slider.setEnabled(not reverse)
+        self.dim_slider.setEnabled(reverse)
+
+    def set_values(self, color, opacity, height, width, full_width, click_through,
+                   auto_read=True, reverse=False, dim=70):
         """Atualiza os controles sem disparar sinais."""
         self.set_color(color)
         for (slider, label, suffix), value in zip(
-                self._sliders, (opacity, height, width)):
+                self._sliders, (opacity, dim, height, width)):
             slider.blockSignals(True)
             slider.setValue(value)
             slider.blockSignals(False)
             label.setText(f"{slider.value()}{suffix}")
         for box, value in ((self.full_width, full_width), (self.click_through, click_through),
-                           (self.auto_read, auto_read)):
+                           (self.auto_read, auto_read), (self.reverse, reverse)):
             box.blockSignals(True)
             box.setChecked(bool(value))
             box.blockSignals(False)
         self.width_slider.setEnabled(not full_width)
+        self._update_reverse_enabled(bool(reverse))
