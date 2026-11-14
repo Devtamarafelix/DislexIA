@@ -1224,6 +1224,34 @@
       html.lock {
         overflow: hidden;
       }
+
+      /* Ajuste no tamnaho do plugin de acessiblidade */
+.asw-container {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.asw-menu {
+  width: 90% !important;         
+  max-width: 420px !important;    
+  height: auto !important;       
+  max-height: 80vh !important;    
+  
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  
+  border-radius: 20px !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25) !important;
+  overflow: hidden !important;
+}
+
+.asw-menu-content {
+  max-height: calc(80vh - 100px) !important; 
+  overflow-y: auto !important;
+}
     </style>
   </head>
   <body>
@@ -1502,6 +1530,22 @@
         <small>© 2026 DislexIA</small><small id="cred"></small>
       </div>
     </footer>
+
+    <!-- Plugin libras -->
+    <div vw class="enabled">
+      <div vw-access-button class="active"></div>
+      <div vw-plugin-wrapper>
+        <div class="vw-plugin-top-wrapper"></div>
+      </div>
+    </div>
+
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+
+    <!-- plugin acessibiidade -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/sienna-accessibility/dist/sienna-accessibility.umd.js"
+      async
+    ></script>
 
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
